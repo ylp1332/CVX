@@ -45,6 +45,7 @@ if is_new
     if cvx___.cs, scmp = @strcmp; else, scmp = @strcmpi; end
     for k = 1 : length(fpaths)
         fpath = fpaths{k};
+        if ~scmp(fpath(end-mlen+1:end), mext), continue; end
         if any( scmp( fpath, fpaths(1:k-1) ) ), continue; end
         if ~exist( fpath, 'file' ), continue; end
         tshim = oshim;
