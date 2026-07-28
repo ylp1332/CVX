@@ -10,8 +10,11 @@ if ~isempty( shim.solve )
 end
 
 fs = cvx___.fs;
+ps = cvx___.ps;
 mext = cvx___.mext;
 mlen = length(mext);
+int_path = [cvx___.where, fs];
+int_plen = length(int_path);
 
 fbase = 'gurobi';
 fname = [ 'gurobi.', mext ];
@@ -24,13 +27,14 @@ if is_new
     shim.name = 'Gurobi';
     shim.dualize = false;
     shim.version = 'unknown';
-    fpaths = which( fbase, '-all' );
+    intname = [int_path, 'gurobi', fs, mext(4:end), fs, fname];
+    fpaths = which(fbase, '-all');
+    if exist(intname, 'file'), fpaths = [{intname}; fpaths]; end
     switch mext
-        case 'mexmaca64', d1 = '/Library/gurobi*/*/matlab';
-        case 'mexmaci64', d1 = '/Library/gurobi*/*/matlab';
-        case 'mexa64',    d1 = '/opt/gurobi*/*/matlab';
-        case 'mexw64',    d1 = 'C:\gurobi*\*\matlab';
-        otherwise,        d1 = '';
+        case {'mexmaca64', 'mexmaci64'}, d1 = '/Library/gurobi*/*/matlab';
+        case 'mexa64', d1 = '/opt/gurobi*/*/matlab';
+        case 'mexw64', d1 = 'C:\gurobi*\*\matlab';
+        otherwise, d1 = '';
     end
     temp = dir( [ d1, fs, fname ] );
     for k = 1:length(temp)
@@ -71,10 +75,15 @@ for k = 1 : length(shim)
     fpath = shim(k).fullpath;
     fspos = strfind(fpath, fs);
     npath = fpath(1:fspos(end)-1);
-    shim(k).location = npath;
-    fpath = [ npath, fs, fname ];
-    if ~exist( fpath, 'file' )
-        shim(k).error = sprintf( 'The Gurobi MEX file expected at\n    %s\nseems to be missing.', fpath );
+    is_internal = strncmp(npath, int_path, int_plen);
+    if is_internal
+        shim(k).location = ['{cvx}', npath(int_plen:end)];
+    else
+        shim(k).location = npath;
+    end
+    fpath = [npath, fs, fname];
+    if ~exist(fpath, 'file')
+        shim(k).error = sprintf('The Gurobi MEX file expected at\n    %s\nseems to be missing.', fpath);
         continue
     end
     cd( npath );
@@ -97,9 +106,9 @@ for k = 1 : length(shim)
     end
     shim(k).version = sprintf( '%d.%d%d', vi.major, vi.minor, vi.technical );
     shim(k).fullpath = fpath;
+    shim(k).path = [npath, ps];
     shim(k).check = @check;
     shim(k).solve = @solve;
-    shim(k).path = [ npath, cvx___.ps ];
     shim(k).eargs = {};
 end
 
